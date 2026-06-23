@@ -41,7 +41,12 @@ Route::get('/debug-dispatches', function () {
 
 // ── Authenticated ──────────────────────────────────────────────────
 Route::get('/error-test', function() {
-    return response()->json(['status' => 'deployed-v2']);
+    try {
+        $data = \App\Models\Incident::first();
+        return response()->json(['status' => 'deployed-v2', 'data' => $data]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'db_error', 'message' => $e->getMessage()]);
+    }
 });
 
 Route::middleware('auth:sanctum')->group(function () {
