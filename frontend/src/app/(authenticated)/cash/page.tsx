@@ -185,10 +185,10 @@ export default function CashPage() {
             renderRow={(r) => (
               <>
                 <td className="py-3 px-4 font-semibold text-text">{r.site?.name}</td>
-                <td className="py-3 px-4 text-muted">{r.pos_z_total.toLocaleString()}</td>
-                <td className="py-3 px-4 text-muted">{r.card_settlement_total.toLocaleString()}</td>
-                <td className="py-3 px-4 text-muted">{r.expected_cash.toLocaleString()}</td>
-                <td className="py-3 px-4 font-mono text-text">{r.actual_cash_counted.toLocaleString()}</td>
+                <td className="py-3 px-4 text-muted">{Number(r.pos_z_total || 0).toLocaleString()}</td>
+                <td className="py-3 px-4 text-muted">{Number(r.card_settlement_total || 0).toLocaleString()}</td>
+                <td className="py-3 px-4 text-muted">{Number(r.expected_cash || 0).toLocaleString()}</td>
+                <td className="py-3 px-4 font-mono text-text">{Number(r.actual_cash_counted || 0).toLocaleString()}</td>
                 <td className={`py-3 px-4 font-bold ${r.cash_variance === 0 ? 'text-palato-green' : r.cash_variance < -500 ? 'text-palato-red' : 'text-palato-amber'}`}>
                   {r.cash_variance === 0 ? '—' : `MVR ${r.cash_variance}`}
                 </td>
