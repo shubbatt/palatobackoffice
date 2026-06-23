@@ -71,7 +71,7 @@ export default function AdminSkusPage() {
     }
   };
 
-  const fmt = (n: number) => `MVR ${Number(n).toLocaleString()}`;
+  const fmt = (n: number | string) => `MVR ${Number(n || 0).toLocaleString()}`;
 
   return (
     <div className="animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

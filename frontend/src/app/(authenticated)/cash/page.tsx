@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import { mutate } from 'swr';
 
-const fmt = (n: number) => `MVR ${n.toLocaleString()}`;
+const fmt = (n: number | string) => `MVR ${Number(n || 0).toLocaleString()}`;
 
 export default function CashPage() {
   const { user } = useAuthStore();

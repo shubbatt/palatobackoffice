@@ -48,7 +48,7 @@ class DashboardController extends Controller
 
         // ── Cash ───────────────────────────────────────────────────
         $cashRecons = CashReconciliation::whereDate('recon_date', $date)
-            ->select('site_id', 'cash_variance', 'status', 'finance_verified')
+            ->select('id', 'site_id', 'expected_cash', 'actual_cash_counted', 'cash_variance', 'status', 'finance_verified')
             ->with('site:id,name')
             ->get();
 

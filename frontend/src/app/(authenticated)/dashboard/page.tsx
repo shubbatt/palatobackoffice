@@ -8,7 +8,7 @@ import {
 } from '@/components/ui';
 import { useRouter } from 'next/navigation';
 
-const fmt = (n: number) => `MVR ${n.toLocaleString('en-MV', { minimumFractionDigits: 0 })}`;
+const fmt = (n: number | string) => `MVR ${Number(n || 0).toLocaleString('en-MV', { minimumFractionDigits: 0 })}`;
 
 function todaySubtitle() {
   return new Date().toLocaleDateString('en-GB', {
@@ -68,8 +68,8 @@ export default function DashboardPage() {
 
   const cashRows = data.cash.reconciliations.map((c) => ({
     site:     <span className="font-semibold text-text">{c.site?.name}</span>,
-    expected: <span className="text-muted tabular-nums">{c.expected_cash.toLocaleString()}</span>,
-    actual:   <span className="text-muted tabular-nums">{c.actual_cash_counted.toLocaleString()}</span>,
+    expected: <span className="text-muted tabular-nums">{Number(c.expected_cash || 0).toLocaleString()}</span>,
+    actual:   <span className="text-muted tabular-nums">{Number(c.actual_cash_counted || 0).toLocaleString()}</span>,
     variance: (
       <span
         className={`font-bold tabular-nums ${

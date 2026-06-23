@@ -30,7 +30,7 @@ const DISPOSITIONS = [
   { value: 'next_day_sale',        label: 'Next day sale' },
 ];
 
-const fmt = (n: number) => `MVR ${n.toLocaleString()}`;
+const fmt = (n: number | string) => `MVR ${Number(n || 0).toLocaleString()}`;
 
 export default function WastePage() {
   const { user }   = useAuthStore();
