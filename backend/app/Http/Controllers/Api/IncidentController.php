@@ -11,16 +11,20 @@ class IncidentController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Incident::with(['site:id,name', 'raisedBy:id,name', 'ownedBy:id,name', 'resolvedBy:id,name'])
-            ->when($request->start_date, fn($q, $v) => $q->whereDate('raised_at', '>=', $v))
-            ->when($request->end_date, fn($q, $v) => $q->whereDate('raised_at', '<=', $v))
-            ->when($request->severity,    fn($q, $v) => $q->where('severity', $v))
-            ->when($request->site_id,     fn($q, $v) => $q->where('site_id', $v))
-            ->when($request->resolved !== null, fn($q) => $q->where('is_resolved', $request->boolean('resolved')))
-            ->orderByRaw("CASE severity WHEN 'red' THEN 1 WHEN 'amber' THEN 2 WHEN 'green' THEN 3 ELSE 4 END")
-            ->orderByDesc('raised_at');
+        try {
+            $query = Incident::with(['site:id,name', 'raisedBy:id,name', 'ownedBy:id,name', 'resolvedBy:id,name'])
+                ->when($request->start_date, fn($q, $v) => $q->whereDate('raised_at', '>=', $v))
+                ->when($request->end_date, fn($q, $v) => $q->whereDate('raised_at', '<=', $v))
+                ->when($request->severity,    fn($q, $v) => $q->where('severity', $v))
+                ->when($request->site_id,     fn($q, $v) => $q->where('site_id', $v))
+                ->when($request->resolved !== null, fn($q) => $q->where('is_resolved', $request->boolean('resolved')))
+                ->orderByRaw("CASE severity WHEN 'red' THEN 1 WHEN 'amber' THEN 2 WHEN 'green' THEN 3 ELSE 4 END")
+                ->orderByDesc('raised_at');
 
-        return response()->json(['data' => $query->get()]);
+            return response()->json(['data' => $query->get()]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 200);
+        }
     }
 
     public function show(Incident $incident): JsonResponse
