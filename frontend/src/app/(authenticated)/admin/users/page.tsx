@@ -1,18 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { users as usersApi } from '@/lib/api';
-import { Card, Btn, Field, SectionHead, Badge, inputCls, Spinner, PageHeader, DataTable } from '@/components/ui';
+import useSWR from 'swr';
+import { users, sites } from '@/lib/api';
+import { PageHeader, Card, DataTable, Btn, Badge, Field, inputCls, Spinner, AlertBanner } from '@/components/ui';
+import { ROLE_LABELS, type UserRole } from '@/lib/store';
 import toast from 'react-hot-toast';
-import { mutate } from 'swr';
-import { useUsers, useSites } from '@/hooks/useData';
-import { User, UserRole } from '@/types';
 
-export default function AdminUsersPage() {
-  const { data: users, isLoading: usersLoading } = useUsers();
-  const { data: sites } = useSites();
-  
-  const [form, setForm] = useState({
+export default function UsersPage() {
+  const { data: usersData, mutate: mutateUsers, error: usersErr } = useSWR('/users', () => users.list().then(res => res.data));
+  const { data: sitesData } = useSWR('/sites', () => sites.list().then(res => res.data));
+
+  const [isEditing, setIsEditing] = useState<any>(null); // null = not editing, {} = new user, {...user} = editing user
+  const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
@@ -20,144 +20,159 @@ export default function AdminUsersPage() {
     password: '',
     role: 'shift_manager',
     site_id: '',
+    is_active: true,
   });
   const [submitting, setSubmitting] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
 
-  const set = (k: string, v: string | number) => setForm((f) => ({ ...f, [k]: v }));
+  const openCreate = () => {
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      whatsapp_number: '',
+      password: '',
+      role: 'shift_manager',
+      site_id: '',
+      is_active: true,
+    });
+    setIsEditing({});
+  };
 
-  const submit = async () => {
-    if (!form.name || !form.email || (!editingId && !form.password)) return;
+  const openEdit = (u: any) => {
+    setFormData({
+      name: u.name || '',
+      email: u.email || '',
+      phone: u.phone || '',
+      whatsapp_number: u.whatsapp_number || '',
+      password: '', // leave empty unless changing
+      role: u.role || 'shift_manager',
+      site_id: u.site_id?.toString() || '',
+      is_active: !!u.is_active,
+    });
+    setIsEditing(u);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setSubmitting(true);
     try {
       const payload = {
-        ...form,
-        site_id: form.site_id ? Number(form.site_id) : null,
+        ...formData,
+        site_id: formData.site_id ? parseInt(formData.site_id, 10) : null,
       };
-
-      if (editingId) {
-        await usersApi.update(editingId, payload);
+      if (isEditing.id) {
+        if (!payload.password) delete payload.password; // Don't send empty password when updating
+        await users.update(isEditing.id, payload);
         toast.success('User updated');
       } else {
-        await usersApi.store(payload);
+        await users.store(payload);
         toast.success('User created');
       }
-      setForm({ name: '', email: '', phone: '', whatsapp_number: '', password: '', role: 'shift_manager', site_id: '' });
-      setEditingId(null);
-      mutate('/users');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Failed to save user');
+      mutateUsers();
+      setIsEditing(null);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Error saving user');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleEdit = (user: User) => {
-    setEditingId(user.id);
-    setForm({
-      name: user.name,
-      email: user.email,
-      phone: (user as any).phone ?? '',
-      whatsapp_number: (user as any).whatsapp_number ?? '',
-      password: '', // blank password field for edit means no change
-      role: user.role,
-      site_id: user.site_id ? user.site_id.toString() : '',
-    });
-  };
-
-  const handleDelete = async (id: number) => {
+  const handleDeactivate = async (id: number) => {
     if (!confirm('Are you sure you want to deactivate this user?')) return;
     try {
-      await usersApi.destroy(id);
+      await users.destroy(id);
       toast.success('User deactivated');
-      mutate('/users');
-    } catch (e: any) {
+      mutateUsers();
+    } catch (err) {
       toast.error('Failed to deactivate user');
     }
   };
 
-  const roles = ['shift_manager', 'production_lead', 'operations_head', 'finance', 'owner'];
+  if (usersErr) return <AlertBanner severity="red">Failed to load users.</AlertBanner>;
 
   return (
-    <div className="animate-fade-in max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="animate-fade-in">
       <PageHeader
         title="Manage Users"
-        subtitle="Create staff accounts, assign roles, and allocate sites"
+        subtitle="Manage user accounts, roles, and site assignments."
+        action={<Btn onClick={openCreate} icon={<span>+</span>}>Add User</Btn>}
       />
 
-      <Card className="mb-6">
-        <SectionHead>{editingId ? 'Edit User' : 'Add New User'}</SectionHead>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Field label="Full Name">
-            <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. John Doe" className={inputCls} />
-          </Field>
-          <Field label="Email Address">
-            <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="e.g. john@palato.mv" className={inputCls} />
-          </Field>
-          <Field label="Phone (Optional)">
-            <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="e.g. 7771234" className={inputCls} />
-          </Field>
-          <Field label="Password">
-            <input type="password" value={form.password} onChange={(e) => set('password', e.target.value)} placeholder={editingId ? 'Leave blank to keep unchanged' : 'Enter strong password'} className={inputCls} />
-          </Field>
-          <Field label="Role">
-            <select value={form.role} onChange={(e) => set('role', e.target.value)} className={inputCls}>
-              {roles.map((r) => (
-                <option key={r} value={r}>{r.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Assigned Site (Optional)">
-            <select value={form.site_id} onChange={(e) => set('site_id', e.target.value)} className={inputCls}>
-              <option value="">No Site (System-wide access)</option>
-              {sites?.map((s) => (
-                <option key={s.id} value={s.id}>{s.name} ({s.type})</option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <div className="mt-5 flex justify-end gap-3">
-          {editingId && (
-            <button className="text-sm font-medium text-muted hover:text-text" onClick={() => { setEditingId(null); setForm({ name: '', email: '', phone: '', whatsapp_number: '', password: '', role: 'shift_manager', site_id: '' }); }}>
-              Cancel
-            </button>
-          )}
-          <Btn onClick={submit} loading={submitting} disabled={submitting || !form.name || !form.email || (!editingId && !form.password)}>
-            {editingId ? 'Update User' : 'Create User'}
-          </Btn>
-        </div>
-      </Card>
+      {isEditing && (
+        <Card className="mb-6 border-accent/50 bg-surface/50 shadow-lg shadow-black/40">
+          <h2 className="text-lg font-bold mb-4">{isEditing.id ? 'Edit User' : 'Create New User'}</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="Full Name">
+                <input required className={inputCls} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+              </Field>
+              <Field label="Email Address">
+                <input required type="email" className={inputCls} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+              </Field>
+              <Field label="Phone">
+                <input className={inputCls} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+              </Field>
+              <Field label="WhatsApp Number">
+                <input className={inputCls} value={formData.whatsapp_number} onChange={e => setFormData({ ...formData, whatsapp_number: e.target.value })} />
+              </Field>
+              <Field label="Role">
+                <select required className={inputCls} value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}>
+                  {Object.entries(ROLE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Assigned Site (Optional)">
+                <select className={inputCls} value={formData.site_id} onChange={e => setFormData({ ...formData, site_id: e.target.value })}>
+                  <option value="">None (Head Office / All Sites)</option>
+                  {sitesData?.map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={isEditing.id ? "New Password (leave empty to keep current)" : "Password"}>
+                <input required={!isEditing.id} minLength={6} type="password" className={inputCls} value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+              </Field>
+              <Field label="Account Status">
+                <div className="flex items-center gap-2 h-full py-2">
+                  <input type="checkbox" checked={formData.is_active} onChange={e => setFormData({ ...formData, is_active: e.target.checked })} className="w-4 h-4 rounded border-border bg-surface text-accent focus:ring-accent" />
+                  <span className="text-sm">Active Account</span>
+                </div>
+              </Field>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">
+              <Btn variant="ghost" onClick={() => setIsEditing(null)}>Cancel</Btn>
+              <Btn type="submit" loading={submitting}>Save User</Btn>
+            </div>
+          </form>
+        </Card>
+      )}
 
       <Card>
-        <SectionHead>System Users</SectionHead>
-        {usersLoading ? (
-          <div className="flex justify-center py-12"><Spinner /></div>
+        {!usersData ? (
+          <div className="flex justify-center p-8"><Spinner /></div>
         ) : (
           <DataTable
-            columns={[
-              { key: 'name', label: 'Name' },
-              { key: 'email', label: 'Email' },
-              { key: 'role', label: 'Role' },
-              { key: 'site', label: 'Assigned Site' },
-              { key: 'status', label: 'Status' },
-              { key: 'actions', label: 'Actions', align: 'right' },
-            ]}
-            rows={(users ?? []).map((u: any) => ({
-              id: u.id,
-              name: <span className="font-semibold text-text">{u.name}</span>,
-              email: <span className="text-sm text-muted">{u.email}</span>,
-              role: <span className="text-xs font-semibold capitalize text-palato-blue">{u.role.replace('_', ' ')}</span>,
-              site: <span className="text-sm text-muted">{u.site ? u.site.name : '-'}</span>,
-              status: u.is_active ? <Badge status="green">Active</Badge> : <Badge status="red">Inactive</Badge>,
-              actions: (
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => handleEdit(u)} className="text-xs font-semibold text-palato-blue hover:text-palato-blue/80">Edit</button>
+            headers={['Name', 'Email', 'Role', 'Site', 'Status', 'Actions']}
+            rows={usersData}
+            keyExtractor={(u: any) => u.id}
+            renderRow={(u: any) => (
+              <>
+                <td className="px-4 py-3 text-sm font-medium">{u.name}</td>
+                <td className="px-4 py-3 text-sm text-muted">{u.email}</td>
+                <td className="px-4 py-3 text-sm"><Badge status="pending">{ROLE_LABELS[u.role as UserRole] || u.role}</Badge></td>
+                <td className="px-4 py-3 text-sm">{u.site ? u.site.name : <span className="text-muted italic">None</span>}</td>
+                <td className="px-4 py-3 text-sm">
+                  {u.is_active ? <Badge status="green">Active</Badge> : <Badge status="red">Inactive</Badge>}
+                </td>
+                <td className="px-4 py-3 text-sm text-right flex justify-end gap-2">
+                  <Btn size="sm" variant="ghost" onClick={() => openEdit(u)}>Edit</Btn>
                   {u.is_active && (
-                    <button onClick={() => handleDelete(u.id)} className="text-xs font-semibold text-palato-red hover:text-palato-red/80">Deactivate</button>
+                    <Btn size="sm" variant="danger" onClick={() => handleDeactivate(u.id)}>Deactivate</Btn>
                   )}
-                </div>
-              ),
-            }))}
+                </td>
+              </>
+            )}
           />
         )}
       </Card>

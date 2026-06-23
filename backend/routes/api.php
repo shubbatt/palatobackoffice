@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\{
     TemperatureController,
     SkuCostController,
     UserController,
+    ReportController,
 };
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('dashboard')->group(function () {
         Route::get('/daily', [DashboardController::class, 'ownerSummary']);
         Route::get('/weekly', [DashboardController::class, 'weeklySummary']);
+    });
+
+    // ── Reports ───────────────────────────────────────────────────
+    Route::prefix('reports')->middleware('role:owner')->group(function () {
+        Route::get('/custom', [ReportController::class, 'custom']);
     });
 
     // ── Sites ─────────────────────────────────────────────────────

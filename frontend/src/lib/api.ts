@@ -110,3 +110,7 @@ export const users = {
   update:  (id: number, data: object) => api.patch(`/users/${id}`, data),
   destroy: (id: number) => api.delete(`/users/${id}`),
 };
+
+export const reports = {
+  custom: (startDate: string, endDate: string) => api.get('/reports/custom', { params: { start_date: startDate, end_date: endDate } }),
+};
