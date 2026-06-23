@@ -22,7 +22,7 @@ class IncidentController extends Controller
                 ->orderByDesc('raised_at');
 
             return response()->json(['data' => $query->get()]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 200);
         }
     }

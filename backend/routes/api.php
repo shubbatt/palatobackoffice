@@ -40,6 +40,10 @@ Route::get('/debug-dispatches', function () {
 });
 
 // ── Authenticated ──────────────────────────────────────────────────
+Route::get('/error-test', function() {
+    return response()->json(['status' => 'deployed-v2']);
+});
+
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/auth/logout', [AuthController::class, 'logout']);
