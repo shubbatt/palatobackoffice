@@ -104,7 +104,12 @@ export default function LoginPage() {
 
         {/* Brand */}
         <div>
-          <img src="/logo.png" alt="Palato" className="h-24 w-auto mb-3" />
+          <div className="flex items-center gap-4 mb-3">
+            <img src="/logo-mark.png" alt="" className="h-16 w-auto invert mix-blend-screen" />
+            <h1 className="text-5xl font-black tracking-tight">
+              <span className="text-accent">P</span>ALATO
+            </h1>
+          </div>
           <p className="text-muted text-base font-medium tracking-wide uppercase" style={{ letterSpacing: '0.12em' }}>
             Daily Operations Framework
           </p>
@@ -145,9 +150,14 @@ export default function LoginPage() {
         <div className="animate-fade-in w-full max-w-md">
 
           {/* Logo (mobile only — left panel handles desktop) */}
-          <div className="mb-8 text-center md:hidden">
-            <img src="/logo.png" alt="Palato" className="h-20 w-auto mx-auto mb-2" />
-            <p className="mt-1 text-sm text-muted">Daily Operations Framework</p>
+          <div className="mb-8 flex flex-col items-center text-center md:hidden">
+            <div className="flex items-center gap-3">
+              <img src="/logo-mark.png" alt="" className="h-12 w-auto invert mix-blend-screen" />
+              <h1 className="text-3xl font-black tracking-tight mt-1">
+                <span className="text-accent">P</span>ALATO
+              </h1>
+            </div>
+            <p className="mt-2 text-sm text-muted">Daily Operations Framework</p>
           </div>
 
           {/* Card */}
