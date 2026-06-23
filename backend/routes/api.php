@@ -27,6 +27,18 @@ Route::get('/seed', function () {
     return response()->json(['message' => 'Database migrated and seeded successfully!']);
 });
 
+Route::get('/logs', function () {
+    $logFile = storage_path('logs/laravel.log');
+    if (!file_exists($logFile)) return "No logs";
+    // Return last 100 lines
+    $lines = file($logFile);
+    return implode("", array_slice($lines, -100));
+});
+
+Route::get('/debug-dispatches', function () {
+    return App\Models\DispatchRecord::all();
+});
+
 // ── Authenticated ──────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -63,10 +75,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('dispatch')->group(function () {
         Route::get('/', [DispatchController::class, 'index']);
         Route::post('/', [DispatchController::class, 'store'])
-            ->middleware('role:production_lead,operations_head');
+            ->middleware('role:production_lead,operations_head,owner');
         Route::patch('/{dispatch}/collect', [DispatchController::class, 'confirmCollection']);
         Route::patch('/{dispatch}/receive', [DispatchController::class, 'confirmReceipt'])
-            ->middleware('role:shift_manager,operations_head');
+            ->middleware('role:shift_manager,operations_head,owner');
     });
 
     // ── Waste ──────────────────────────────────────────────────────
