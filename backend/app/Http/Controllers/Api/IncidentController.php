@@ -17,7 +17,7 @@ class IncidentController extends Controller
             ->when($request->severity,    fn($q, $v) => $q->where('severity', $v))
             ->when($request->site_id,     fn($q, $v) => $q->where('site_id', $v))
             ->when($request->resolved !== null, fn($q) => $q->where('is_resolved', $request->boolean('resolved')))
-            ->orderByRaw("FIELD(severity, 'red', 'amber', 'green')")
+            ->orderByRaw("CASE severity WHEN 'red' THEN 1 WHEN 'amber' THEN 2 WHEN 'green' THEN 3 ELSE 4 END")
             ->orderByDesc('raised_at');
 
         return response()->json(['data' => $query->get()]);
