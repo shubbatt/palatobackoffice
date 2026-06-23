@@ -21,6 +21,12 @@ use Illuminate\Support\Facades\Route;
 // ── Public ─────────────────────────────────────────────────────────
 Route::post('/auth/login', [AuthController::class, 'login']);
 
+Route::get('/seed', function () {
+    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+    \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+    return response()->json(['message' => 'Database migrated and seeded successfully!']);
+});
+
 // ── Authenticated ──────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
 
