@@ -40,6 +40,47 @@ class DispatchController extends Controller
     }
 
     /**
+     * Stage 1: Production Lead creates multiple dispatches in bulk.
+     */
+    public function storeBulk(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'dispatches'                         => 'required|array|min:1',
+            'dispatches.*.origin_site_id'        => 'required|exists:sites,id',
+            'dispatches.*.destination_site_id'   => 'required|exists:sites,id|different:dispatches.*.origin_site_id',
+            'dispatches.*.sku'                   => 'required|string|max:100',
+            'dispatches.*.quantity_dispatched'   => 'required|integer|min:1',
+            'dispatches.*.temperature_sensitive' => 'boolean',
+            'dispatches.*.pack_temp_c'           => 'nullable|numeric',
+            'dispatches.*.pack_condition'        => 'in:good,damaged,suspect',
+            'dispatches.*.pack_photo_path'       => 'nullable|string',
+        ]);
+
+        $records = [];
+        $now = now();
+        $userId = auth()->id();
+        $today = today();
+
+        foreach ($data['dispatches'] as $dispatchData) {
+            $dispatchData['temperature_sensitive'] = $dispatchData['temperature_sensitive'] ?? false;
+            $dispatchData['pack_condition'] = $dispatchData['pack_condition'] ?? 'good';
+
+            $records[] = DispatchRecord::create([
+                ...$dispatchData,
+                'packed_by_user_id' => $userId,
+                'packed_at'         => $now,
+                'dispatch_date'     => $today,
+                'status'            => 'pending',
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Bulk dispatch created', 
+            'count' => count($records)
+        ], 201);
+    }
+
+    /**
      * Stage 2: Driver confirms collection.
      */
     public function confirmCollection(Request $request, DispatchRecord $dispatch): JsonResponse

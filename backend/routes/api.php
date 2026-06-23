@@ -83,6 +83,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // ── Dispatch (3-confirmation) ──────────────────────────────────
     Route::prefix('dispatch')->group(function () {
         Route::get('/', [DispatchController::class, 'index']);
+        Route::post('/bulk', [DispatchController::class, 'storeBulk'])
+            ->middleware('role:production_lead,operations_head,owner');
         Route::post('/', [DispatchController::class, 'store'])
             ->middleware('role:production_lead,operations_head,owner');
         Route::patch('/{dispatch}/collect', [DispatchController::class, 'confirmCollection']);

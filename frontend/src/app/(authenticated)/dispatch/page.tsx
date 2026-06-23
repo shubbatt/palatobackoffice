@@ -18,32 +18,49 @@ export default function DispatchPage() {
   const { data: skus }     = useSkuCosts();
   const { data, isLoading } = useDispatches();
 
-  const [form, setForm] = useState({
-    origin_site_id: user?.site_id ?? '',
+  const [originSiteId, setOriginSiteId] = useState(user?.site_id ?? '');
+  const [items, setItems] = useState([{
+    id: Date.now(),
     destination_site_id: '',
     sku: '',
     quantity_dispatched: '',
-    temperature_sensitive: false,
     pack_condition: 'good',
-  });
+  }]);
+  
   const [receiving, setReceiving]   = useState<Record<number, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+
+  const addItem = () => setItems([...items, { id: Date.now(), destination_site_id: '', sku: '', quantity_dispatched: '', pack_condition: 'good' }]);
+  const removeItem = (id: number) => {
+    if (items.length === 1) return;
+    setItems(items.filter(i => i.id !== id));
+  };
+  const updateItem = (id: number, key: string, value: string) => {
+    setItems(items.map(i => i.id === id ? { ...i, [key]: value } : i));
+  };
 
   const createDispatch = async () => {
+    if (!originSiteId) return toast.error('Please select an origin site');
+    const validItems = items.filter(i => i.destination_site_id && i.sku && i.quantity_dispatched);
+    if (validItems.length === 0) return toast.error('Please add at least one valid item');
+
     setSubmitting(true);
     try {
-      await dispatchApi.create({
-        ...form,
-        origin_site_id:      Number(form.origin_site_id),
-        destination_site_id: Number(form.destination_site_id),
-        quantity_dispatched:  Number(form.quantity_dispatched),
-      });
-      toast.success('Dispatch created');
-      setForm((f) => ({ ...f, sku: '', quantity_dispatched: '', destination_site_id: '' }));
+      const dispatches = validItems.map(i => ({
+        origin_site_id: Number(originSiteId),
+        destination_site_id: Number(i.destination_site_id),
+        sku: i.sku,
+        quantity_dispatched: Number(i.quantity_dispatched),
+        pack_condition: i.pack_condition,
+        temperature_sensitive: false,
+      }));
+
+      await dispatchApi.createBulk({ dispatches });
+      toast.success(`Created ${dispatches.length} dispatch records`);
+      setItems([{ id: Date.now(), destination_site_id: '', sku: '', quantity_dispatched: '', pack_condition: 'good' }]);
       mutate('/dispatch');
     } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Failed to create dispatch');
+      toast.error(e.response?.data?.message ?? 'Failed to create dispatches');
     } finally {
       setSubmitting(false);
     }
@@ -84,53 +101,72 @@ export default function DispatchPage() {
       {/* Create dispatch — production lead / ops head only */}
       {['production_lead', 'operations_head', 'owner'].includes(user?.role ?? '') && (
         <Card>
-          <SectionHead>Create Dispatch (Production Lead)</SectionHead>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end">
-            <Field label="Origin">
-              <select value={form.origin_site_id} onChange={(e) => set('origin_site_id', e.target.value)} className={inputCls}>
-                <option value="">Select…</option>
+          <SectionHead>Create Bulk Dispatch (Production Lead)</SectionHead>
+          <div className="mb-4 w-64">
+            <Field label="Origin Site">
+              <select value={originSiteId} onChange={(e) => setOriginSiteId(e.target.value)} className={inputCls}>
+                <option value="">Select Origin…</option>
                 {sites?.filter(s => s.type !== 'retail').map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Destination">
-              <select value={form.destination_site_id} onChange={(e) => set('destination_site_id', e.target.value)} className={inputCls}>
-                <option value="">Select…</option>
-                {sites?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </Field>
-            <Field label="SKU">
-              <input
-                list="sku-list"
-                value={form.sku}
-                onChange={(e) => set('sku', e.target.value)}
-                placeholder="e.g. Croissant"
-                className={inputCls}
-              />
-              <datalist id="sku-list">
-                {skus?.map((s) => <option key={s.sku} value={s.sku} />)}
-              </datalist>
-            </Field>
-            <Field label="Qty">
-              <input type="number" value={form.quantity_dispatched}
-                onChange={(e) => set('quantity_dispatched', e.target.value)}
-                placeholder="Units" className={inputCls} />
-            </Field>
-            <Field label="Condition">
-              <select value={form.pack_condition} onChange={(e) => set('pack_condition', e.target.value)} className={inputCls}>
-                <option value="good">Good</option>
-                <option value="damaged">Damaged</option>
-                <option value="suspect">Suspect</option>
-              </select>
-            </Field>
-            <div className="flex pb-1">
-              <Btn
-                onClick={createDispatch}
-                disabled={submitting || !form.origin_site_id || !form.destination_site_id || !form.sku || !form.quantity_dispatched}
-                className="w-full justify-center"
-              >
-                {submitting ? 'Creating…' : 'Create Dispatch →'}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {items.map((item) => (
+              <div key={item.id} className="flex flex-wrap md:flex-nowrap gap-3 items-end bg-surface p-3 rounded-lg border border-border relative">
+                <div className="flex-1 min-w-[150px]">
+                  <Field label="Destination">
+                    <select value={item.destination_site_id} onChange={(e) => updateItem(item.id, 'destination_site_id', e.target.value)} className={inputCls}>
+                      <option value="">Select…</option>
+                      {sites?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </Field>
+                </div>
+                <div className="flex-1 min-w-[150px]">
+                  <Field label="SKU">
+                    <input
+                      list="sku-list"
+                      value={item.sku}
+                      onChange={(e) => updateItem(item.id, 'sku', e.target.value)}
+                      placeholder="e.g. Croissant"
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
+                <div className="w-24">
+                  <Field label="Qty">
+                    <input type="number" value={item.quantity_dispatched}
+                      onChange={(e) => updateItem(item.id, 'quantity_dispatched', e.target.value)}
+                      placeholder="Units" className={inputCls} />
+                  </Field>
+                </div>
+                <div className="w-32">
+                  <Field label="Condition">
+                    <select value={item.pack_condition} onChange={(e) => updateItem(item.id, 'pack_condition', e.target.value)} className={inputCls}>
+                      <option value="good">Good</option>
+                      <option value="damaged">Damaged</option>
+                      <option value="suspect">Suspect</option>
+                    </select>
+                  </Field>
+                </div>
+                {items.length > 1 && (
+                  <button onClick={() => removeItem(item.id)} className="h-10 px-3 text-muted hover:text-palato-red transition-colors" title="Remove item">
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            
+            <datalist id="sku-list">
+              {skus?.map((s) => <option key={s.sku} value={s.sku} />)}
+            </datalist>
+
+            <div className="flex items-center justify-between mt-2 border-t border-border pt-4">
+              <Btn variant="ghost" size="sm" onClick={addItem}>+ Add Item</Btn>
+              <Btn onClick={createDispatch} disabled={submitting}>
+                {submitting ? 'Creating…' : 'Dispatch All Items →'}
               </Btn>
             </div>
           </div>

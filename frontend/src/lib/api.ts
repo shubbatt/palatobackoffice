@@ -53,6 +53,7 @@ export const dashboard = {
 export const dispatch = {
   list:           (params?: object) => api.get('/dispatch', { params }),
   create:         (data: object)    => api.post('/dispatch', data),
+  createBulk:     (data: { dispatches: object[] }) => api.post('/dispatch/bulk', data),
   confirmCollect: (id: number)      => api.patch(`/dispatch/${id}/collect`),
   confirmReceive: (id: number, data: object) => api.patch(`/dispatch/${id}/receive`, data),
 };
