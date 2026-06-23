@@ -105,8 +105,14 @@ class DispatchController extends Controller
         $startDate = $request->get('start_date', $request->get('date', today()->toDateString()));
         $endDate = $request->get('end_date', $startDate);
 
-        $query = DispatchRecord::with(['originSite', 'destinationSite', 'packedBy', 'receivedBy'])
-            ->whereBetween('dispatch_date', [$startDate, $endDate]);
+        $query = DispatchRecord::with(['originSite', 'destinationSite', 'packedBy', 'receivedBy']);
+
+        if ($startDate === $endDate) {
+            $query->whereDate('dispatch_date', $startDate);
+        } else {
+            $query->whereDate('dispatch_date', '>=', $startDate)
+                  ->whereDate('dispatch_date', '<=', $endDate);
+        }
 
         if ($request->has('site_id')) {
             $query->where('destination_site_id', $request->site_id);
