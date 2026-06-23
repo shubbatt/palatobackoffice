@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { auth } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { Oswald } from 'next/font/google';
+
+const oswald = Oswald({ subsets: ['latin'] });
 
 export default function LoginPage() {
   const router = useRouter();
@@ -106,8 +109,8 @@ export default function LoginPage() {
         <div>
           <div className="flex items-center gap-4 mb-3">
             <img src="/logo-mark.png" alt="" className="h-16 w-auto invert mix-blend-screen" />
-            <h1 className="text-5xl font-black tracking-tight">
-              <span className="text-accent">P</span>ALATO
+            <h1 className={`text-6xl text-white tracking-wide ${oswald.className}`}>
+              PALATO
             </h1>
           </div>
           <p className="text-muted text-base font-medium tracking-wide uppercase" style={{ letterSpacing: '0.12em' }}>
@@ -153,8 +156,8 @@ export default function LoginPage() {
           <div className="mb-8 flex flex-col items-center text-center md:hidden">
             <div className="flex items-center gap-3">
               <img src="/logo-mark.png" alt="" className="h-12 w-auto invert mix-blend-screen" />
-              <h1 className="text-3xl font-black tracking-tight mt-1">
-                <span className="text-accent">P</span>ALATO
+              <h1 className={`text-4xl text-white mt-1 tracking-wide ${oswald.className}`}>
+                PALATO
               </h1>
             </div>
             <p className="mt-2 text-sm text-muted">Daily Operations Framework</p>

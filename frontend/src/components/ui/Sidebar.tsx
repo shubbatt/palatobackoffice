@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore, ROLE_LABELS, type UserRole } from '@/lib/store';
 import { clsx } from 'clsx';
+import { Oswald } from 'next/font/google';
+
+const oswald = Oswald({ subsets: ['latin'] });
 
 const NAV: {
   href: string;
@@ -191,8 +194,8 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
               <img src="/logo-mark.png" alt="" className="h-7 w-auto object-contain invert mix-blend-screen" />
-              <span className="text-xl font-black tracking-tight mt-0.5">
-                <span className="text-accent">P</span>ALATO
+              <span className={`text-2xl text-white mt-0.5 ${oswald.className}`}>
+                PALATO
               </span>
             </div>
             {/* Online indicator */}
