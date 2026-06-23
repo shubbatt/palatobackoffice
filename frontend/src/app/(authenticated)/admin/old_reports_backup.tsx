@@ -6,43 +6,11 @@ import { useSites, useWaste, useDispatches, useIncidents, useCloseGate, useCash,
 
 type ReportType = 'waste' | 'dispatch' | 'incidents' | 'close_gate' | 'cash' | 'temperatures';
 
-// Helper to escape CSV values
-const escapeCsv = (val: any) => {
-  if (val === null || val === undefined) return '';
-  const str = String(val);
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-};
-
-// Generic CSV downloader
-const downloadCsv = (filename: string, headers: string[], rows: any[][]) => {
-  const csvContent = [
-    headers.map(escapeCsv).join(','),
-    ...rows.map(row => row.map(escapeCsv).join(','))
-  ].join('\n');
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>('waste');
   
-  // Default to 7 days ago until today
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
-  });
+  // Default to today
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [siteId, setSiteId] = useState('');
 
@@ -55,6 +23,11 @@ export default function ReportsPage() {
   };
   if (siteId) params.site_id = siteId;
 
+  // We unconditionally call all hooks but they only fetch if we want? Actually SWR will fetch all of them by default.
+  // It's better to fetch all since they are light, or we could conditionally fetch, but SWR allows conditional fetching if we pass null to key, but our hooks don't easily support that without modifying them.
+  // It's fine for an admin dashboard to fetch them all, or we can just let them fetch.
+  // Actually, to avoid unnecessary requests, let's just let them fetch for now as it's a simple app.
+  
   const { data: wasteData, isLoading: wasteLoading } = useWaste(reportType === 'waste' ? params : undefined);
   const { data: dispatchData, isLoading: dispatchLoading } = useDispatches(reportType === 'dispatch' ? params : undefined);
   const { data: incidentData, isLoading: incidentLoading } = useIncidents(reportType === 'incidents' ? params : undefined);
@@ -62,56 +35,10 @@ export default function ReportsPage() {
   const { data: cashData, isLoading: cashLoading } = useCash(reportType === 'cash' ? params : undefined);
   const { data: tempsData, isLoading: tempsLoading } = useTemperatures(reportType === 'temperatures' ? params : undefined);
 
-  // -- EXPORTS --
-  const handleExportCsv = () => {
-    if (reportType === 'waste') {
-      const headers = ['Date', 'Site', 'SKU', 'Quantity', 'Reason', 'Cost', 'Status'];
-      const rows = (wasteData?.data ?? []).map((w: any) => [
-        w.waste_date, w.site?.name ?? '-', w.sku, w.units_wasted, w.reason_code, w.total_recipe_cost, w.status
-      ]);
-      downloadCsv(`waste-report-${startDate}-to-${endDate}.csv`, headers, rows);
-    }
-    else if (reportType === 'dispatch') {
-      const headers = ['Date', 'Origin', 'Destination', 'SKU', 'Dispatched', 'Received', 'Variance', 'Status'];
-      const rows = (dispatchData?.data ?? []).map((d: any) => [
-        d.dispatch_date, d.originSite?.name, d.destinationSite?.name, d.sku, d.quantity_dispatched, d.quantity_received ?? 0, d.variance, d.status
-      ]);
-      downloadCsv(`dispatch-report-${startDate}-to-${endDate}.csv`, headers, rows);
-    }
-    else if (reportType === 'incidents') {
-      const headers = ['Date', 'Ref', 'Site', 'Title', 'Severity', 'Resolved'];
-      const rows = (incidentData?.data ?? []).map((i: any) => [
-        new Date(i.raised_at).toISOString().split('T')[0], i.reference, i.site?.name, i.title, i.severity, i.is_resolved ? 'Yes' : 'No'
-      ]);
-      downloadCsv(`incidents-report-${startDate}-to-${endDate}.csv`, headers, rows);
-    }
-    else if (reportType === 'close_gate') {
-      const headers = ['Date', 'Site', 'Status', 'Overridden'];
-      const rows = (closeGateData ?? []).map((c: any) => [
-        c.gate_date, c.site?.name, c.gate_status, c.overrideApprovedBy ? 'Yes' : 'No'
-      ]);
-      downloadCsv(`closegate-report-${startDate}-to-${endDate}.csv`, headers, rows);
-    }
-    else if (reportType === 'cash') {
-      const headers = ['Date', 'Site', 'Expected', 'Actual', 'Variance', 'Status'];
-      const rows = (cashData ?? []).map((c: any) => [
-        c.recon_date, c.site?.name, c.expected_cash, c.actual_cash_counted, Number(c.actual_cash_counted) - Number(c.expected_cash), c.status
-      ]);
-      downloadCsv(`cash-report-${startDate}-to-${endDate}.csv`, headers, rows);
-    }
-    else if (reportType === 'temperatures') {
-      const headers = ['Date', 'Site', 'Unit', 'Temp', 'Within Range'];
-      const rows = (tempsData ?? []).map((t: any) => [
-        t.log_date, t.site?.name, t.unit_name, t.temp_c, t.within_range ? 'Yes' : 'No'
-      ]);
-      downloadCsv(`temperatures-report-${startDate}-to-${endDate}.csv`, headers, rows);
-    }
-  };
-
   // Render Logic based on type
   const renderWaste = () => {
     if (wasteLoading) return <div className="flex justify-center p-10"><Spinner /></div>;
-    const rows = (wasteData?.data ?? []).map((w: any) => ({
+    const rows = (wasteData?.data ?? []).map(w => ({
       id: w.id,
       date: w.waste_date,
       site: w.site?.name ?? '-',
@@ -123,7 +50,7 @@ export default function ReportsPage() {
     }));
     return (
       <>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 print:hidden">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <KpiCard label="Total Waste Cost" value={`MVR ${Number(wasteData?.summary?.total_recipe_cost ?? 0).toFixed(2)}`} status="amber" />
           <KpiCard label="Total Units Wasted" value={wasteData?.summary?.total_units ?? 0} />
           <KpiCard label="Entries" value={wasteData?.data?.length ?? 0} />
@@ -146,7 +73,7 @@ export default function ReportsPage() {
 
   const renderDispatch = () => {
     if (dispatchLoading) return <div className="flex justify-center p-10"><Spinner /></div>;
-    const rows = (dispatchData?.data ?? []).map((d: any) => ({
+    const rows = (dispatchData?.data ?? []).map(d => ({
       id: d.id,
       date: d.dispatch_date,
       origin: d.originSite?.name,
@@ -157,7 +84,7 @@ export default function ReportsPage() {
       status: d.status === 'green' ? <Badge status="green">OK</Badge> : 
               d.status === 'amber' ? <Badge status="amber">Minor Variance</Badge> : 
               d.status === 'red' ? <Badge status="red">Major Variance</Badge> :
-              <Badge status="pending">Pending</Badge>
+              <Badge status="gray">Pending</Badge>
     }));
     return (
       <DataTable
@@ -177,12 +104,12 @@ export default function ReportsPage() {
 
   const renderIncidents = () => {
     if (incidentLoading) return <div className="flex justify-center p-10"><Spinner /></div>;
-    const rows = (incidentData?.data ?? []).map((i: any) => ({
+    const rows = (incidentData?.data ?? []).map(i => ({
       id: i.id,
       date: new Date(i.raised_at).toLocaleDateString(),
       site: i.site?.name,
       title: <span className="font-semibold">{i.title}</span>,
-      severity: <Badge status={i.severity}>{i.severity.toUpperCase()}</Badge>,
+      severity: <Badge status={i.severity as any}>{i.severity.toUpperCase()}</Badge>,
       status: i.is_resolved ? <Badge status="green">Resolved</Badge> : <Badge status="red">Open</Badge>,
     }));
     return (
@@ -201,7 +128,7 @@ export default function ReportsPage() {
 
   const renderCloseGate = () => {
     if (closeGateLoading) return <div className="flex justify-center p-10"><Spinner /></div>;
-    const rows = (closeGateData ?? []).map((c: any) => ({
+    const rows = (closeGateData ?? []).map(c => ({
       id: c.id,
       date: c.gate_date,
       site: c.site?.name,
@@ -225,7 +152,7 @@ export default function ReportsPage() {
 
   const renderCash = () => {
     if (cashLoading) return <div className="flex justify-center p-10"><Spinner /></div>;
-    const rows = (cashData ?? []).map((c: any) => ({
+    const rows = (cashData ?? []).map(c => ({
       id: c.id,
       date: c.recon_date,
       site: c.site?.name,
@@ -253,7 +180,7 @@ export default function ReportsPage() {
 
   const renderTemperatures = () => {
     if (tempsLoading) return <div className="flex justify-center p-10"><Spinner /></div>;
-    const rows = (tempsData ?? []).map((t: any) => ({
+    const rows = (tempsData ?? []).map(t => ({
       id: t.id,
       date: t.log_date,
       site: t.site?.name,
@@ -280,10 +207,9 @@ export default function ReportsPage() {
       <PageHeader
         title="Reporting & Analytics"
         subtitle="Extract historical data across all operations"
-        className="print:hidden"
       />
 
-      <Card className="mb-6 print:hidden">
+      <Card className="mb-6">
         <SectionHead>Report Filters</SectionHead>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Field label="Report Type">
@@ -305,20 +231,14 @@ export default function ReportsPage() {
           <Field label="Site (Optional)">
             <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={inputCls}>
               <option value="">All Sites</option>
-              {sites?.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {sites?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
         </div>
       </Card>
 
-      {/* Print-only title */}
-      <div className="hidden print:block mb-6">
-        <h1 className="text-2xl font-bold uppercase tracking-wider">{reportType.replace('_', ' ')} Report</h1>
-        <p className="text-sm text-gray-500">From {startDate} to {endDate} {siteId && `| Site ID: ${siteId}`}</p>
-      </div>
-
-      <Card className="print:border-0 print:shadow-none print:p-0">
-        <div className="flex justify-between items-center mb-4 print:hidden">
+      <Card>
+        <div className="flex justify-between items-center mb-4">
           <SectionHead>
             {reportType === 'waste' && 'Waste Report'}
             {reportType === 'dispatch' && 'Dispatch Report'}
@@ -327,26 +247,16 @@ export default function ReportsPage() {
             {reportType === 'cash' && 'Cash Reconciliation Report'}
             {reportType === 'temperatures' && 'Temperature Logs'}
           </SectionHead>
-          <div className="flex gap-2">
-            <Btn onClick={handleExportCsv} variant="ghost" className="!py-1.5 !px-3 !text-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-              Export CSV
-            </Btn>
-            <Btn onClick={() => window.print()} className="!py-1.5 !px-3 !text-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M6.728 10.605a6.002 6.002 0 0110.544 0M12 21v-8m0 0a3.001 3.001 0 100-6 3.001 3.001 0 000 6z" /></svg>
-              Export PDF
-            </Btn>
-          </div>
+          {/* In the future, we could add a CSV export button here */}
+          <Btn onClick={() => window.print()} className="!py-1.5 !px-3 !text-xs">Print / PDF</Btn>
         </div>
         
-        <div className="print:text-black">
-          {reportType === 'waste' && renderWaste()}
-          {reportType === 'dispatch' && renderDispatch()}
-          {reportType === 'incidents' && renderIncidents()}
-          {reportType === 'close_gate' && renderCloseGate()}
-          {reportType === 'cash' && renderCash()}
-          {reportType === 'temperatures' && renderTemperatures()}
-        </div>
+        {reportType === 'waste' && renderWaste()}
+        {reportType === 'dispatch' && renderDispatch()}
+        {reportType === 'incidents' && renderIncidents()}
+        {reportType === 'close_gate' && renderCloseGate()}
+        {reportType === 'cash' && renderCash()}
+        {reportType === 'temperatures' && renderTemperatures()}
       </Card>
     </div>
   );

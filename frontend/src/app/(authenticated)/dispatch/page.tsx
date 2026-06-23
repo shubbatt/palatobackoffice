@@ -127,7 +127,7 @@ export default function DispatchPage() {
             <div className="flex pb-1">
               <Btn
                 onClick={createDispatch}
-                disabled={submitting || !form.destination_site_id || !form.sku || !form.quantity_dispatched}
+                disabled={submitting || !form.origin_site_id || !form.destination_site_id || !form.sku || !form.quantity_dispatched}
                 className="w-full justify-center"
               >
                 {submitting ? 'Creating…' : 'Create Dispatch →'}
