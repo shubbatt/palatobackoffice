@@ -21,3 +21,19 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
+
+$app->booted(function () {
+    if (config('database.default') === 'sqlite') {
+        try {
+            if (!file_exists(database_path('database.sqlite'))) {
+                touch(database_path('database.sqlite'));
+            }
+            if (!\Illuminate\Support\Facades\Schema::hasTable('users') || \App\Models\User::count() === 0) {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+            }
+        } catch (\Exception $e) {}
+    }
+});
+
+return $app;
