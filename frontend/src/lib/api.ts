@@ -1,7 +1,16 @@
 import axios, { AxiosInstance } from 'axios';
 
+const rawUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+let parsedBase = rawUrl;
+try {
+  const u = new URL(rawUrl);
+  parsedBase = `${u.protocol}//${u.host}/api`;
+} catch (e) {
+  parsedBase = rawUrl.replace(/\/+$/, '') + (rawUrl.endsWith('/api') ? '' : '/api');
+}
+
 const api: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '') + (process.env.NEXT_PUBLIC_API_URL?.endsWith('/api') ? '' : '/api'),
+  baseURL: parsedBase,
   headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
 });
 
