@@ -43,7 +43,7 @@ return new class extends Migration
             $table->string('receive_photo_path')->nullable();
 
             // Calculated variance
-            $table->integer('variance')->virtualAs('quantity_dispatched - IFNULL(quantity_received, 0)');
+            $table->integer('variance')->virtualAs('quantity_dispatched - COALESCE(quantity_received, 0)');
             $table->text('variance_notes')->nullable();
 
             // Escalation
