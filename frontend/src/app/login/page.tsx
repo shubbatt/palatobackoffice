@@ -104,9 +104,7 @@ export default function LoginPage() {
 
         {/* Brand */}
         <div>
-          <h1 className="text-5xl font-black tracking-tight mb-3">
-            <span className="text-accent">P</span>ALATO
-          </h1>
+          <img src="/logo.png" alt="Palato" className="h-24 w-auto mb-3" />
           <p className="text-muted text-base font-medium tracking-wide uppercase" style={{ letterSpacing: '0.12em' }}>
             Daily Operations Framework
           </p>
@@ -148,9 +146,7 @@ export default function LoginPage() {
 
           {/* Logo (mobile only — left panel handles desktop) */}
           <div className="mb-8 text-center md:hidden">
-            <h1 className="text-3xl font-black tracking-tight">
-              <span className="text-accent">P</span>ALATO
-            </h1>
+            <img src="/logo.png" alt="Palato" className="h-20 w-auto mx-auto mb-2" />
             <p className="mt-1 text-sm text-muted">Daily Operations Framework</p>
           </div>
 

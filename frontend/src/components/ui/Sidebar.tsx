@@ -189,9 +189,7 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         {/* Logo and Mobile Close */}
         <div className="flex h-14 items-center justify-between px-5 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-black tracking-tight">
-              <span className="text-accent">P</span>ALATO
-            </span>
+            <img src="/logo.png" alt="Palato" className="h-8 w-auto object-contain" />
             {/* Online indicator */}
             <span
               className="inline-block rounded-full bg-palato-green"
