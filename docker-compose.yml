@@ -1,0 +1,134 @@
+version: '3.9'
+
+services:
+  # ── Laravel API ────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: palato_api
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./backend:/var/www
+      - ./backend/storage/logs:/var/www/storage/logs
+    environment:
+      - APP_ENV=local
+      - APP_KEY=${APP_KEY}
+      - DB_HOST=db
+      - DB_DATABASE=palato
+      - DB_USERNAME=palato
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - QUEUE_CONNECTION=redis
+    networks:
+      - palato
+    depends_on:
+      - db
+      - redis
+
+  # ── Next.js Frontend ───────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: palato_frontend
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.palato.mv
+    networks:
+      - palato
+
+  # ── Nginx Reverse Proxy ────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: palato_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+      - ./backend/public:/var/www/public
+    networks:
+      - palato
+    depends_on:
+      - api
+      - frontend
+
+  # ── MySQL ──────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: palato_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: palato
+      MYSQL_USER: palato
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - palato_db:/var/lib/mysql
+    networks:
+      - palato
+
+  # ── Redis ──────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: palato_redis
+    restart: unless-stopped
+    networks:
+      - palato
+
+  # ── Queue Worker ───────────────────────────────────────────────
+  queue:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: palato_queue
+    restart: unless-stopped
+    command: php artisan queue:work redis --tries=3 --timeout=90
+    volumes:
+      - ./backend:/var/www
+    environment:
+      - DB_HOST=db
+      - REDIS_HOST=redis
+    networks:
+      - palato
+    depends_on:
+      - db
+      - redis
+
+  # ── Scheduler ─────────────────────────────────────────────────
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: palato_scheduler
+    restart: unless-stopped
+    command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    volumes:
+      - ./backend:/var/www
+    networks:
+      - palato
+    depends_on:
+      - db
+
+  # ── Certbot SSL ────────────────────────────────────────────────
+  certbot:
+    image: certbot/certbot
+    container_name: palato_certbot
+    volumes:
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+networks:
+  palato:
+    driver: bridge
+
+volumes:
+  palato_db:
