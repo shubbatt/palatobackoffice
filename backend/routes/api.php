@@ -99,7 +99,9 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:operations_head,owner');
 
     // ── SKU Costs (Finance / Owner managed) ───────────────────────
+    Route::get('sku-costs', [SkuCostController::class, 'index']);
     Route::apiResource('sku-costs', SkuCostController::class)
+        ->except(['index'])
         ->middleware('role:finance,owner,operations_head');
 
     // ── Users (Admin managed) ────────────────────────────────────────
